@@ -11,23 +11,34 @@ import java.lang.Exception
 
 class MainViewModel(private val retrofitClient: RetrofitClient) : ViewModel() {
 
+    companion object {
+        const val NOTIFICATION_GET_WEATHER_FAILED = 1
+    }
+
     val name = MutableLiveData<String>()
     val temperature = MutableLiveData<String>()
     val humidity = MutableLiveData<String>()
+    val notification = MutableLiveData<Int>()
 
     fun getCurrentWeather() {
         viewModelScope.launch(Dispatchers.IO) {
             val cityId = "2172797"
             try {
                 val result = retrofitClient.getService().getCurrentWeather(cityId)
-                if (result.isSuccessful) {
-                    withContext(Dispatchers.Main) {
+                Log.e("MainViewModel", "Fetch data in thread: ${Thread.currentThread().name}")
+                withContext(Dispatchers.Main) {
+                    if (result.isSuccessful) {
+                        Log.e("MainViewModel", "Update UI in thread: ${Thread.currentThread().name}")
                         updateData(result.body())
+                    } else {
+                        notification.value = NOTIFICATION_GET_WEATHER_FAILED
+                        Log.e("MainViewModel", "getCurrentWeather failed: \n ${result.errorBody()?.toString()}")
                     }
-                } else {
-                    Log.e("MainViewModel", "getCurrentWeather failed: \n ${result.errorBody()?.toString()}")
                 }
             } catch (ex: Exception) {
+                withContext(Dispatchers.Main) {
+                    notification.value = NOTIFICATION_GET_WEATHER_FAILED
+                }
                 Log.e("MainViewModel", "getCurrentWeather failed: \n ${ex.message}")
             }
         }
